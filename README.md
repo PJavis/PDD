@@ -4,6 +4,8 @@ Finite-difference solver, Jupyter demo, and **Gradio web UI** reproducing the ph
 
 > Jing, Xing, Zhang et al., *Dynamics of zinc dendritic growth in aqueous zinc-based flow batteries: Insights from phase field–Lattice-Boltzmann simulations*, **Chemical Engineering Journal 503 (2025) 158318**.
 
+> 🟢 **New here / not a programmer?** Read **[GETTING_STARTED.md](GETTING_STARTED.md)** — a click-by-click guide that installs everything from scratch and runs the web demo. No coding experience needed.
+
 ## Contents
 
 | File | Purpose |
