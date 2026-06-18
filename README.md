@@ -39,12 +39,24 @@ out = run_fast(steps=6000, u_inlet=0.05)   # ~30s instead of ~50s
 
 ## Features
 
-- **Phase field** (anisotropic Kobayashi Allen-Cahn driven by bounded Butler-Volmer)
+- **Phase field** (anisotropic Kobayashi Allen-Cahn driven by Butler-Volmer)
 - **Nernst-Planck** for Zn²⁺ (diffusion + electromigration + reaction sink)
 - **Poisson / Laplace** for potential (deposit pinned equipotential, Jacobi)
 - **Lattice-Boltzmann D2Q9** flow with diffuse-interface drag (paper Eq. 5–9)
 - **Convection** of Zn²⁺ via `u·∇c+` coupled from LBM
 - **Polycrystalline** multi-seed competitive growth (random `theta_j` per grain, Voronoi orientation field)
+- **Damköhler-controlled morphology**: `Da ~ k_dep / Ds` selects compact vs ramified growth (paper Fig. 3 physics)
+- **Numba backend** + Poisson-every-K-steps → ~2.5× faster than the naïve loop
+- **Web UI** with grid-size quality presets (fast preview → high detail)
+
+### Responsive driving (why sliders now visibly change the result)
+
+The phase-field driving uses `m = m_max · tanh(k_dep·S / k_ref)`. The earlier
+`arctan` form **saturated** — once `k_dep·S` was large, doubling `k_dep` barely
+moved `m`, so wildly different inputs produced near-identical figures. The `tanh`
+form with the `k_ref` gain keeps the slider operating in its sensitive band, so
+`k_dep` (reaction rate) and `Ds` (transport) both change the morphology, exactly
+as the Damköhler number predicts.
 
 ## What the demos show
 

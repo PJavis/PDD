@@ -130,7 +130,7 @@ def _lbm_step_jit(f, c, nu, W0, u_inlet, h_drag=2.757):
 
 @njit(cache=True, fastmath=True)
 def _phase_np_step_jit(c, cp, phi, ux, uy, grain_theta,
-                      dx, dt, W0, tau, delta, omega_aniso, beta, k_dep, alpha,
+                      dx, dt, W0, tau, delta, omega_aniso, m_max, k_ref, k_dep, alpha,
                       E_theta, De, Ds, zF_RT, cs_c0, grad_phi_cap, use_lbm):
     Ny, Nx = c.shape
     # spatial derivatives (replicate-edge BC)
@@ -162,7 +162,7 @@ def _phase_np_step_jit(c, cp, phi, ux, uy, grain_theta,
             if H > 40.0: H = 40.0
             if H < -40.0: H = -40.0
             S = cp[i, j] * np.exp(alpha * H) - np.exp(-(1.0 - alpha) * H)
-            m[i, j] = (beta / np.pi) * np.arctan(k_dep * S)
+            m[i, j] = m_max * np.tanh(k_dep * S / k_ref)
 
     # phase-field grad terms (anisotropic Kobayashi)
     A2cx = np.empty((Ny, Nx)); A2cy = np.empty((Ny, Nx))
@@ -277,7 +277,7 @@ def run_fast(
     Nx=160, Ny=220, dx=1.0, dt=5e-3, steps=8000,
     W0=1.0, tau=0.5,
     delta=0.05, omega_aniso=6, theta_j=0.0,
-    beta=0.9,
+    m_max=0.45, k_ref=10.0,
     k_dep=8.0, alpha=0.5, E_theta=-0.3,
     De=1e-3, Ds=1.0, zF_RT=4.0,
     cs_c0=1.0,
@@ -285,7 +285,7 @@ def run_fast(
     grad_phi_cap=0.5,
     seed_r=6.0, record_every=400, verbose=True,
     u_inlet=0.0, nu_lbm=0.1,
-    seeds=None, n_phi_iter=25,
+    seeds=None, n_phi_iter=25, phi_every=4,
 ):
     yy, xx = np.mgrid[0:Ny, 0:Nx].astype(float)
     cx0 = Nx / 2.0
@@ -314,17 +314,17 @@ def run_fast(
     for it in range(steps):
         if use_lbm:
             f_lbm, ux, uy = _lbm_step_jit(f_lbm, c, nu_lbm, W0, u_inlet)
-        phi = _solve_phi_jit(phi, c, phi_top, phi_dep, n_phi_iter)
+        if it % phi_every == 0:
+            phi = _solve_phi_jit(phi, c, phi_top, phi_dep, n_phi_iter)
         new_c, new_cp, _dc = _phase_np_step_jit(
             c, cp, phi, ux, uy, grain_theta,
-            dx, dt, W0, tau, delta, float(omega_aniso), beta, k_dep, alpha,
+            dx, dt, W0, tau, delta, float(omega_aniso), m_max, k_ref, k_dep, alpha,
             E_theta, De, Ds, zF_RT, cs_c0, grad_phi_cap, use_lbm,
         )
         c, cp = new_c, new_cp
         if it % record_every == 0:
-            col = int(cx0)
-            ys = np.where(c[:, col] > 0.5)[0]
-            h = ys.max() * dx if ys.size else 0.0
+            ysg, _ = np.where(c > 0.5)        # max height anywhere
+            h = ysg.max() * dx if ysg.size else 0.0
             tip_len.append(h); tip_t.append(it * dt)
             frames.append((it * dt, c.copy(), cp.copy(), phi.copy()))
             if verbose:

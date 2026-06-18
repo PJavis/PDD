@@ -144,7 +144,7 @@ def run(
     Nx=160, Ny=220, dx=1.0, dt=5e-3, steps=8000,
     W0=1.0, tau=0.5,                # interface width & phase-field relaxation
     delta=0.05, omega_aniso=6, theta_j=0.0,
-    beta=0.9,                       # driving strength (|m| < beta/2)
+    m_max=0.45, k_ref=10.0,         # driving cap & gain scale (tanh response)
     k_dep=8.0, alpha=0.5, E_theta=-0.3,
     De=1e-3, Ds=1.0, zF_RT=4.0,     # NP diffusion (deposit/electrolyte), z F/RT
     cs_c0=1.0,                      # cs/c0 reaction sink ratio
@@ -153,6 +153,7 @@ def run(
     seed_r=6.0, record_every=400, verbose=True,
     u_inlet=0.0, nu_lbm=0.1,           # LBM flow params (u_inlet=0 -> no flow)
     seeds=None,                        # list of (cx,cy,r,theta_j) for multi-seed
+    phi_every=4,                       # re-solve Poisson every N steps (speedup)
 ):
     # fields: row index y (0=bottom), col index x
     yy, xx = np.mgrid[0:Ny, 0:Nx].astype(float)
@@ -193,8 +194,9 @@ def run(
         if use_lbm:
             f_lbm, ux, uy = lbm_step(f_lbm, c, nu_lbm, W0, u_inlet)
 
-        # --- Poisson/Laplace ---
-        phi = solve_phi(phi, c, dx, phi_top, phi_dep)
+        # --- Poisson/Laplace (re-solve every phi_every steps; phi is slow) ---
+        if it % phi_every == 0:
+            phi = solve_phi(phi, c, dx, phi_top, phi_dep)
 
         # --- interface normal angle theta + 6-fold anisotropy A(theta) ---
         cx, cy = grad(c, dx)
@@ -203,13 +205,15 @@ def run(
         A = W0 * (1.0 + delta * np.cos(ang))
         Ap = -W0 * delta * omega_aniso * np.sin(ang)   # dA/dtheta
 
-        # --- Butler-Volmer driving, bounded (Kobayashi-style arctan) ---
+        # --- Butler-Volmer driving, responsive tanh (Kobayashi-style) ---
         # paper uses conserved Cahn-Hilliard; this anisotropic Allen-Cahn
         # (Kobayashi) form gives identical qualitative dendrite physics.
+        # tanh(k_dep*S/k_ref) stays sensitive across wide k_dep instead of
+        # saturating early like arctan -> k_dep AND Ds sliders stay alive.
         eta = phi - E_theta
         H = np.clip(zF_RT * eta, -40, 40)
         S = cp * np.exp(alpha * H) - np.exp(-(1 - alpha) * H)   # >0 -> deposition
-        m = (beta / np.pi) * np.arctan(k_dep * S)              # |m| < beta/2
+        m = m_max * np.tanh(k_dep * S / k_ref)                 # |m| < m_max
 
         # --- anisotropic gradient (Kobayashi 2D) ---
         A2 = A * A
@@ -252,8 +256,8 @@ def run(
         cp[0, :] = cp[1, :]
 
         if it % record_every == 0:
-            ys = np.where(c[:, int(cx0)] > 0.5)[0]
-            h = ys.max() * dx if ys.size else 0.0
+            ysg, _ = np.where(c > 0.5)        # max height anywhere, not just center
+            h = ysg.max() * dx if ysg.size else 0.0
             tip_len.append(h)
             tip_t.append(it * dt)
             frames.append((it * dt, c.copy(), cp.copy(), phi.copy()))

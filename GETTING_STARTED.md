@@ -172,15 +172,24 @@ In the web version (Step 4), you'll see these sliders. Here's what they mean in 
 
 | Slider | Plain-language meaning | Try this |
 |--------|------------------------|----------|
-| **k_dep** | How *fast* the metal sticks. Higher = faster, bushier trees. | Slide it high (20+) to see big bushy growth |
-| **Ds** | How easily the metal "food" (ions) moves around. | Higher = trees grow taller |
+| **k_dep** | How *fast* the metal sticks (reaction speed). Higher = taller, more aggressive growth. | Compare 4 vs 32 — the tree gets much taller |
+| **Ds** | How easily the metal "food" (ions) moves around (transport speed). | Lower Ds + high k_dep = spiky/branched; high Ds = compact |
 | **E_theta** | How hard you push the electricity. More negative = stronger push. | Try -0.4 for faster growth |
+| **delta** | Branchiness. Low = smooth mound, high = pointy faceted spikes. | Slide 0.0 → 0.3 and watch the shape sharpen |
 | **u_inlet** | Wind speed of liquid flowing past. 0 = still water. | Set to 0.06 and watch the tree lean sideways! |
-| **steps** | How long to run the experiment. More = taller tree but slower. | Start at 4000 |
+| **steps** | How long to run the experiment. More = taller tree but slower. | Start at 6000 |
+| **Quality / grid** | Picture size. Smaller = faster, bigger = more detail. | Use **Fast preview** while experimenting, then **High detail** for the final picture |
 | **Polycrystalline** | Tick this to grow *many* trees at once instead of one. | Tick it to see trees compete |
 | **n_seeds** | How many trees (only if Polycrystalline is ticked). | Try 6–8 |
 
 After moving sliders, always click **Run simulation** again to see the new result.
+
+> **Why do my pictures sometimes look the same?** Two reasons. (1) If the tree is
+> still tiny (low `k_dep`, few `steps`), small differences are hard to see — grow
+> it taller first. (2) The single most powerful knob for *shape* is the
+> **Damköhler number** shown under the result: it's roughly `k_dep ÷ Ds`. To see
+> a big change, move `k_dep` and `Ds` in **opposite** directions (e.g. high
+> `k_dep` + low `Ds` = branchy; low `k_dep` + high `Ds` = compact).
 
 ---
 
