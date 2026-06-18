@@ -27,14 +27,19 @@ uv run --with numpy --with matplotlib --with jupyter \
 
 ### Web UI
 ```bash
-uv run --with numpy --with matplotlib --with gradio python3 app.py
+# include --with numba so the UI auto-uses the fast backend
+uv run --with numpy --with matplotlib --with numba --with gradio python3 app.py
 # open the printed URL (default http://localhost:7860)
 ```
+The UI prints `Backend: numba` (or `numpy` if Numba is absent). Sliders:
+`k_dep`, `Ds`, `E_theta`, `delta`, `u_inlet`, `steps`, grid-quality preset,
+and a polycrystalline toggle. The result panel shows the Damköhler number
+`Da ~ k_dep/Ds` and its regime (compact / mixed / ramified).
 
 ### Fast (Numba) backend
 ```python
 from fd_core_numba import run_fast
-out = run_fast(steps=6000, u_inlet=0.05)   # ~30s instead of ~50s
+out = run_fast(steps=6000, u_inlet=0.05)   # ~2.5x faster than naive NumPy loop
 ```
 
 ## Features
@@ -64,6 +69,7 @@ as the Damköhler number predicts.
 |------------|-------|---------------|
 | Tip effect (Zn²⁺ depletion boundary layer) | Fig. 2 | static notebook + web UI |
 | Effect of exchange current density `i0` | Fig. 3 | notebook `k_dep` sweep |
+| Damköhler ratio `Da~k_dep/Ds` → compact vs ramified | Fig. 3 + text | notebook Damköhler sweep + web UI readout |
 | Forced-flow dendrite tilt toward inlet | Fig. 5–6 | `u_inlet > 0` in web UI |
 | Polycrystalline competition | Fig. 7 | "polycrystalline" checkbox in web UI |
 
@@ -78,7 +84,7 @@ as the Damköhler number predicts.
 
 ## Simplifications vs the paper
 
-- Phase-field uses Kobayashi Allen-Cahn (driven by bounded `arctan` of BV) instead of the paper's conserved Cahn-Hilliard. Qualitative dendrite physics is identical.
+- Phase-field uses Kobayashi Allen-Cahn (driven by `m = m_max·tanh(k_dep·S/k_ref)` of the Butler-Volmer expression `S`) instead of the paper's conserved Cahn-Hilliard. Qualitative dendrite physics is identical. (`tanh` chosen over `arctan` to avoid driving saturation — see "Responsive driving" above.)
 - Dimensional prefactors lumped into nondimensional tunable rates (`k_dep`, `cs_c0`, etc.) with `W0 = 1`, `tau0 = W0² / Ds = 1`.
 - LBM uses bounce-back at top/bottom, equilibrium inlet at right, copy-outflow at left. Body-force-free; flow driven entirely by inlet BC.
 
@@ -87,5 +93,7 @@ as the Damköhler number predicts.
 1. ~~LBM flow~~ ✅
 2. ~~Polycrystalline competition~~ ✅
 3. ~~Gradio web wrapper~~ ✅
-4. ~~Numba JIT speedup~~ ✅ (1.7×; further parallel/CUDA possible)
-5. Optional ML surrogate (FNO/DeepONet) trained on FD ground-truth.
+4. ~~Numba JIT speedup~~ ✅ (1.7×; ~2.5× combined with `phi_every`)
+5. ~~Responsive driving + wide parameter range + Damköhler readout~~ ✅
+6. Optional ML surrogate (FNO/DeepONet) trained on FD ground-truth.
+7. Further speed: Numba `parallel`/`prange` or CUDA backend.

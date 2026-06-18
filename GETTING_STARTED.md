@@ -113,8 +113,9 @@ This opens a webpage with sliders, right on your own computer.
 
 1. In the project terminal, paste this and press Enter:
    ```bash
-   uv run --with numpy --with matplotlib --with gradio python3 app.py
+   uv run --with numpy --with matplotlib --with numba --with gradio python3 app.py
    ```
+   (The `--with numba` part turns on the **fast engine**. You'll see `Backend: numba` print — that means it worked. If you leave it out, the app still runs, just slower.)
 2. The **first time**, it downloads the science libraries. This takes 1–3 minutes. You'll see lots of text scroll by — that's normal.
 3. When it's ready, you'll see a line like:
    ```
