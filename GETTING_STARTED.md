@@ -177,9 +177,11 @@ In the web version (Step 4), you'll see these sliders. Here's what they mean in 
 | **Ds** | How easily the metal "food" (ions) moves around (transport speed). | Lower Ds + high k_dep = spiky/branched; high Ds = compact |
 | **E_theta** | How hard you push the electricity. More negative = stronger push. | Try -0.4 for faster growth |
 | **delta** | Branchiness. Low = smooth mound, high = pointy faceted spikes. | Slide 0.0 → 0.3 and watch the shape sharpen |
-| **u_inlet** | Wind speed of liquid flowing past. 0 = still water. | Set to 0.06 and watch the tree lean sideways! |
-| **steps** | How long to run the experiment. More = taller tree but slower. | Start at 6000 |
-| **Quality / grid** | Picture size. Smaller = faster, bigger = more detail. | Use **Fast preview** while experimenting, then **High detail** for the final picture |
+| **u_inlet** | Wind speed of liquid flowing past. 0 = still water, 2 = strongest flow. | Set to 1 and watch the tree lean sideways! |
+| **steps** | How long to run the experiment. More = taller tree but slower. Goes up to **24000** for a fully-grown dendrite. | Start at 6000; push toward 24000 once you like the shape and want it taller |
+| **Quality / grid** | Picture size. Pick a ready-made size, or choose **Custom** to set your own width/height with the two sliders below. Smaller = faster, bigger = more detail. | Use **Fast preview** while experimenting, then **High detail** for the final picture |
+| **Nx** | Grid **width** (only used when Quality = *Custom*). More = wider, more detailed, slower. | Leave at 160 unless you chose Custom |
+| **Ny** | Grid **height** (only used when Quality = *Custom*). More = taller room for the tree, slower. | Try 300+ for a tall dendrite |
 | **Polycrystalline** | Tick this to grow *many* trees at once instead of one. | Tick it to see trees compete |
 | **n_seeds** | How many trees (only if Polycrystalline is ticked). | Try 6–8 |
 

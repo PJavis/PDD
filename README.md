@@ -6,6 +6,8 @@ Finite-difference solver, Jupyter demo, and **Gradio web UI** reproducing the ph
 
 > 🟢 **New here / not a programmer?** Read **[GETTING_STARTED.md](GETTING_STARTED.md)** — a click-by-click guide that installs everything from scratch and runs the web demo. No coding experience needed.
 
+> 🇻🇳 **Tiếng Việt:** giải thích *chương trình giải phương trình gì, tại sao, và bằng cách nào* — xem **[TAI_LIEU_VI.md](TAI_LIEU_VI.md)**.
+
 ## Contents
 
 | File | Purpose |
@@ -32,9 +34,25 @@ uv run --with numpy --with matplotlib --with numba --with gradio python3 app.py
 # open the printed URL (default http://localhost:7860)
 ```
 The UI prints `Backend: numba` (or `numpy` if Numba is absent). Sliders:
-`k_dep`, `Ds`, `E_theta`, `delta`, `u_inlet`, `steps`, grid-quality preset,
-and a polycrystalline toggle. The result panel shows the Damköhler number
-`Da ~ k_dep/Ds` and its regime (compact / mixed / ramified).
+`k_dep`, `Ds`, `E_theta`, `delta`, `u_inlet`, `steps` (up to **24 000** for
+tall/fully-developed dendrites), a grid-quality preset, and a polycrystalline
+toggle. The result panel shows the Damköhler number `Da ~ k_dep/Ds` and its
+regime (compact / mixed / ramified).
+
+> **Grid size** is chosen via the **Quality / grid** dropdown (Fast preview
+> `120×140` → Very high detail `280×400`), or set **`Custom`** to type your own
+> `Nx` (width, 64–400) and `Ny` (height, 64–512) on the two sliders. Presets
+> keep beginners from accidentally picking a browser-freezing grid; Custom gives
+> full control when you need it.
+
+Slider ranges (widened for stronger effects, all within the explicit-FD
+stability limit): `k_dep` 0.5–80, `Ds` 0.1–10, `E_theta` −0.8…−0.02,
+`delta` 0.0–0.6, `u_inlet` 0.0–2.0, `steps` 1000–24000, `n_seeds` 2–24.
+
+> **`u_inlet` is a 0–2 flow-strength dial.** Lattice-Boltzmann is only stable
+> at low Mach number, so the slider is mapped internally onto a safe lattice
+> velocity (`2.0 → 0.2` lattice units). Higher = visibly stronger flow with no
+> NaN blow-ups; tune `U_INLET_MAX_LATTICE` in `app.py` to change the ceiling.
 
 ### Fast (Numba) backend
 ```python
