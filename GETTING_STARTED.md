@@ -178,7 +178,7 @@ In the web version (Step 4), you'll see these sliders. Here's what they mean in 
 | **E_theta** | How hard you push the electricity. More negative = stronger push. | Try -0.4 for faster growth |
 | **delta** | Branchiness. Low = smooth mound, high = pointy faceted spikes. | Slide 0.0 → 0.3 and watch the shape sharpen |
 | **u_inlet** | Wind speed of liquid flowing past. 0 = still water, 2 = strongest flow. | Set to 1 and watch the tree lean sideways! |
-| **steps** | How long to run the experiment. More = taller tree but slower. Goes up to **24000** for a fully-grown dendrite. | Start at 6000; push toward 24000 once you like the shape and want it taller |
+| **steps** | How long to run the experiment. More = taller tree but slower. Goes up to **200000** for a fully-grown dendrite (very long — watch the time estimate!). | Start at 6000; raise it once you like the shape and want it taller |
 | **Quality / grid** | Picture size. Pick a ready-made size, or choose **Custom** to set your own width/height with the two sliders below. Smaller = faster, bigger = more detail. | Use **Fast preview** while experimenting, then **High detail** for the final picture |
 | **Nx** | Grid **width** (only used when Quality = *Custom*). More = wider, more detailed, slower. | Leave at 160 unless you chose Custom |
 | **Ny** | Grid **height** (only used when Quality = *Custom*). More = taller room for the tree, slower. | Try 300+ for a tall dendrite |
@@ -186,6 +186,12 @@ In the web version (Step 4), you'll see these sliders. Here's what they mean in 
 | **n_seeds** | How many trees (only if Polycrystalline is ticked). | Try 6–8 |
 
 After moving sliders, always click **Run simulation** again to see the new result.
+
+> **How long will it take?** Just above the Run button there's a live
+> **"Estimated run time"** line. It updates as you change *steps*, *grid*, or
+> *flow*. A big grid + a high step count can take many minutes (even hours at
+> the 200000 max), so keep it small
+> while experimenting — the estimate warns you (⏳) when a run will be heavy.
 
 > **Why do my pictures sometimes look the same?** Two reasons. (1) If the tree is
 > still tiny (low `k_dep`, few `steps`), small differences are hard to see — grow

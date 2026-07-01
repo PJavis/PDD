@@ -34,10 +34,10 @@ uv run --with numpy --with matplotlib --with numba --with gradio python3 app.py
 # open the printed URL (default http://localhost:7860)
 ```
 The UI prints `Backend: numba` (or `numpy` if Numba is absent). Sliders:
-`k_dep`, `Ds`, `E_theta`, `delta`, `u_inlet`, `steps` (up to **24 000** for
-tall/fully-developed dendrites), a grid-quality preset, and a polycrystalline
-toggle. The result panel shows the Damköhler number `Da ~ k_dep/Ds` and its
-regime (compact / mixed / ramified).
+`k_dep`, `Ds`, `E_theta`, `delta`, `u_inlet`, `steps` (up to **200 000** for
+very tall/fully-developed dendrites — but mind the run-time estimate), a
+grid-quality preset, and a polycrystalline toggle. The result panel shows the
+Damköhler number `Da ~ k_dep/Ds` and its regime (compact / mixed / ramified).
 
 > **Grid size** is chosen via the **Quality / grid** dropdown (Fast preview
 > `120×140` → Very high detail `280×400`), or set **`Custom`** to type your own
@@ -47,7 +47,7 @@ regime (compact / mixed / ramified).
 
 Slider ranges (widened for stronger effects, all within the explicit-FD
 stability limit): `k_dep` 0.5–80, `Ds` 0.1–10, `E_theta` −0.8…−0.02,
-`delta` 0.0–0.6, `u_inlet` 0.0–2.0, `steps` 1000–24000, `n_seeds` 2–24.
+`delta` 0.0–0.6, `u_inlet` 0.0–2.0, `steps` 1000–200000, `n_seeds` 2–24.
 
 > **`u_inlet` is a 0–2 flow-strength dial.** Lattice-Boltzmann is only stable
 > at low Mach number, so the slider is mapped internally onto a safe lattice
@@ -70,7 +70,33 @@ out = run_fast(steps=6000, u_inlet=0.05)   # ~2.5x faster than naive NumPy loop
 - **Polycrystalline** multi-seed competitive growth (random `theta_j` per grain, Voronoi orientation field)
 - **Damköhler-controlled morphology**: `Da ~ k_dep / Ds` selects compact vs ramified growth (paper Fig. 3 physics)
 - **Numba backend** + Poisson-every-K-steps → ~2.5× faster than the naïve loop
-- **Web UI** with grid-size quality presets (fast preview → high detail)
+- **Web UI** with grid-size quality presets (fast preview → high detail) and a
+  **live run-time estimate** next to the Run button
+
+## Performance / "why is it slow?"
+
+Run time scales **linearly with `Nx · Ny · steps`** — roughly `1.2e-7 s` per
+cell per step on the Numba backend. So the cost of the built-in configs is:
+
+| Config | Approx. time |
+|--------|-------------|
+| Balanced 160×200, 6000 steps | ~12 s |
+| Very-high-detail 280×400, 6000 steps | ~85 s |
+| 280×400, 24000 steps | ~5 min |
+| 160×200, 200000 steps (max) | ~13 min |
+| 280×400, 200000 steps (max) | ~45 min |
+| Custom 400×512 + flow, 200000 steps (max) | ~2 hr |
+
+Enabling flow (`u_inlet > 0`) adds ~60% (the LBM step). The **biggest lever is
+just picking a smaller grid / fewer steps while exploring**, then scaling up for
+the final picture — the UI shows the estimate so you know before clicking Run.
+
+> **Why not multi-threaded?** The kernels are single-threaded `@njit` on
+> purpose. Per-pass `parallel=True`/`prange` was implemented and benchmarked and
+> ran **~4–6× slower** here: the solver is many small stencil passes, and the
+> parallel transform loses SIMD vectorization and pays fork-join overhead on
+> every pass, every step. Real speedups would need a *different* structure
+> (e.g. one fused kernel, or a GPU port) — see roadmap.
 
 ### Responsive driving (why sliders now visibly change the result)
 
@@ -114,4 +140,5 @@ as the Damköhler number predicts.
 4. ~~Numba JIT speedup~~ ✅ (1.7×; ~2.5× combined with `phi_every`)
 5. ~~Responsive driving + wide parameter range + Damköhler readout~~ ✅
 6. Optional ML surrogate (FNO/DeepONet) trained on FD ground-truth.
-7. Further speed: Numba `parallel`/`prange` or CUDA backend.
+7. Further speed: per-pass `parallel`/`prange` was tried and is **~4–6× slower**
+   (see Performance). Real gains need a single fused kernel or a CUDA/GPU port.

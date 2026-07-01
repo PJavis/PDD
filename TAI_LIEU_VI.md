@@ -146,7 +146,7 @@ Da ≈ k_dep / Ds     (tốc độ phản ứng / tốc độ vận chuyển ion
 | `E_theta` | Điện thế cân bằng (càng âm càng "đẩy mạnh") | −0.8 … −0.02 V |
 | `delta`   | Độ dị hướng (độ phân nhánh) | 0.0 – 0.6 |
 | `u_inlet` | Độ mạnh dòng chảy dung dịch (0 = tĩnh, 2 = mạnh nhất) | 0.0 – 2.0 |
-| `steps`   | Số bước thời gian (càng nhiều → nhánh càng cao, càng lâu) | 1000 – 24000 |
+| `steps`   | Số bước thời gian (càng nhiều → nhánh càng cao, càng lâu) | 1000 – 200000 |
 | **Quality / grid** | Kích thước lưới: chọn preset **hoặc** `Custom` để tự đặt | — |
 | `Nx`      | **Chiều rộng** lưới (chỉ dùng khi chọn *Custom*) | 64 – 400 |
 | `Ny`      | **Chiều cao** lưới (chỉ dùng khi chọn *Custom*) | 64 – 512 |
@@ -173,6 +173,31 @@ Các khoảng trên đã được chọn nằm trong **giới hạn ổn định
   với `W₀ = 1`, `τ₀ = W₀²/Ds = 1`.
 - Lattice–Boltzmann: bounce-back tường trên/dưới, biên vào cân bằng bên phải, chảy ra sao chép bên trái;
   dòng chảy hoàn toàn do điều kiện biên vào điều khiển (không có lực khối).
+
+---
+
+## 6b. Vì sao chạy chậm? (hiệu năng)
+
+Thời gian chạy **tỉ lệ tuyến tính với `Nx · Ny · steps`** — khoảng `1.2e-7 giây`
+cho mỗi ô lưới mỗi bước (backend Numba). Do đó:
+
+| Cấu hình | Thời gian xấp xỉ |
+|----------|------------------|
+| Balanced 160×200, 6000 bước | ~12 giây |
+| Very-high-detail 280×400, 6000 bước | ~85 giây |
+| 280×400, 24000 bước | ~5 phút |
+| 280×400, 200000 bước (tối đa) | ~45 phút |
+| Custom 400×512 + dòng chảy, 200000 bước (tối đa) | ~2 giờ |
+
+Bật dòng chảy (`u_inlet > 0`) làm chậm thêm ~60%. **Cách nhanh nhất để thử nghiệm là chọn lưới nhỏ /
+ít bước**, rồi mới tăng lên cho ảnh cuối cùng. Giao diện web hiển thị **thời gian ước tính** ngay cạnh
+nút Run để bạn biết trước khi bấm.
+
+> **Vì sao không chạy đa luồng?** Các nhân tính toán cố ý để **đơn luồng** (`@njit`). Chúng tôi đã thử
+> song song hoá từng vòng lặp (`parallel=True`/`prange`) và đo được **chậm hơn ~4–6 lần**: bài toán gồm
+> nhiều "lát" stencil nhỏ, khi song song hoá thì mất khả năng vector hoá (SIMD) và tốn chi phí điều phối
+> luồng ở mỗi lát, mỗi bước. Muốn nhanh thật sự phải đổi cấu trúc (gộp thành một nhân duy nhất, hoặc
+> chuyển sang GPU/CUDA).
 
 ---
 

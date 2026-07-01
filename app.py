@@ -38,6 +38,44 @@ QUALITY = {
     "Custom (use Nx / Ny sliders)": None,
 }
 
+# Rough runtime model: time ~= SEC_PER_CELL_STEP * Nx * Ny * steps, with a
+# multiplier when LBM flow is on. Calibrated from the serial Numba backend
+# (~12 s for 160x200x6000, ~87 s for 280x400x6000); the numpy fallback is far
+# slower. Used only for the UI "estimated time" hint, so a ballpark is fine.
+SEC_PER_CELL_STEP = 1.2e-7
+FLOW_TIME_FACTOR = 1.6
+
+
+def _resolve_grid(quality, Nx_custom, Ny_custom):
+    preset = QUALITY.get(quality)
+    if preset is None:
+        return int(Nx_custom), int(Ny_custom)
+    return preset
+
+
+def _estimate(steps, quality, Nx_custom, Ny_custom, u_inlet):
+    # Defensive: this fires on every slider tweak; tolerate missing/odd values
+    # (e.g. a transient None) instead of throwing and blanking the UI.
+    try:
+        Nx, Ny = _resolve_grid(quality, Nx_custom or 160, Ny_custom or 200)
+        steps = int(steps or 0)
+        u_inlet = float(u_inlet or 0.0)
+    except (TypeError, ValueError, KeyError):
+        return "**Estimated run time:** —"
+    est = SEC_PER_CELL_STEP * Nx * Ny * steps
+    if u_inlet > 0:
+        est *= FLOW_TIME_FACTOR
+    if _BACKEND != "numba":
+        est *= 12.0            # pure-numpy fallback is far slower
+    if est < 90:
+        human = f"~{est:.0f} s"
+    else:
+        human = f"~{est / 60:.1f} min"
+    note = "" if est < 60 else "  ⏳ heavy — reduce steps or grid to iterate faster"
+    return (f"**Estimated run time: {human}**  "
+            f"(grid {Nx}×{Ny}, {steps} steps"
+            f"{', flow on' if u_inlet > 0 else ''}){note}")
+
 
 def _render(out):
     fig, ax = plt.subplots(1, 3, figsize=(14, 4.5))
@@ -65,11 +103,7 @@ def _tip_plot(out):
 
 def simulate(k_dep, Ds, E_theta, delta, u_inlet, steps, quality,
              Nx_custom, Ny_custom, multi_seed, n_seeds):
-    preset = QUALITY[quality]
-    if preset is None:                      # "Custom" -> use the sliders
-        Nx, Ny = int(Nx_custom), int(Ny_custom)
-    else:
-        Nx, Ny = preset
+    Nx, Ny = _resolve_grid(quality, Nx_custom, Ny_custom)
     if multi_seed:
         rng = np.random.default_rng(1)
         xs = np.linspace(0.15 * Nx, 0.85 * Nx, int(n_seeds))
@@ -133,7 +167,7 @@ with gr.Blocks(title="Zinc Dendrite Simulator") as demo:
                                 label="delta  (anisotropy / branchiness)")
             u_inlet = gr.Slider(0.0, 2.0,  value=0.0,  step=0.05,
                                 label="u_inlet  (electrolyte flow strength; 0 = static)")
-            steps   = gr.Slider(1000, 24000, value=6000, step=500,
+            steps   = gr.Slider(1000, 200000, value=6000, step=1000,
                                 label="steps  (longer = taller dendrite, slower)")
             quality = gr.Dropdown(list(QUALITY.keys()),
                                   value="Balanced (160x200)", label="Quality / grid")
@@ -143,11 +177,18 @@ with gr.Blocks(title="Zinc Dendrite Simulator") as demo:
                                   label="Ny  (grid height — only used when Quality = Custom)")
             multi_seed = gr.Checkbox(value=False, label="Polycrystalline (many seeds)")
             n_seeds = gr.Slider(2, 24, value=8, step=1, label="n_seeds (if polycrystalline)")
+            est = gr.Markdown(_estimate(6000, "Balanced (160x200)", 160, 200, 0.0))
             run_btn = gr.Button("Run simulation", variant="primary")
         with gr.Column(scale=2):
             fields = gr.Plot(label="Final fields")
             tip = gr.Plot(label="Growth vs time")
             summary = gr.Markdown()
+
+    # live run-time estimate: recompute whenever a cost-driving input changes
+    est_inputs = [steps, quality, Nx_custom, Ny_custom, u_inlet]
+    for comp in est_inputs:
+        comp.change(_estimate, inputs=est_inputs, outputs=est)
+
     run_btn.click(
         simulate,
         inputs=[k_dep, Ds, E_theta, delta, u_inlet, steps, quality,

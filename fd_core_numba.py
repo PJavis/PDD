@@ -1,21 +1,25 @@
 """Numba-JIT accelerated version of fd_core.run().
 
 Expected speedup ~10-30x over the pure-NumPy version for the same grid size.
-Compile cost is paid once on first call (~5-10s).
+The hot kernels are single-threaded @njit with cache=True: this lets Numba
+SIMD-vectorize each stencil pass and pays the compile cost only once (cached to
+disk). NOTE: per-pass prange/parallel=True was tried and measured ~4-6x SLOWER
+here — the many small stencil passes lose vectorization and drown in fork-join
+overhead — so the serial kernels are intentional. Cost scales ~ Nx*Ny*steps.
 
 Usage:
     from fd_core_numba import run_fast
     out = run_fast(...)   # same signature & return as fd_core.run()
 """
 import numpy as np
-from numba import njit, prange
+from numba import njit
 
 
 @njit(cache=True, fastmath=True)
 def _solve_phi_jit(phi, c, phi_top, phi_dep, n_iter):
     Ny, Nx = phi.shape
     for _ in range(n_iter):
-        # BCs
+        # BCs (cheap edge loops -> serial)
         for j in range(Nx):
             phi[0, j] = phi_dep
             phi[Ny - 1, j] = phi_top
@@ -30,11 +34,11 @@ def _solve_phi_jit(phi, c, phi_top, phi_dep, n_iter):
         # Jacobi update with replicate-edge boundaries
         new_phi = np.empty_like(phi)
         for i in range(Ny):
-            ip = i + 1 if i < Ny - 1 else i
-            im = i - 1 if i > 0 else i
+            ip = min(i + 1, Ny - 1)
+            im = max(i - 1, 0)
             for j in range(Nx):
-                jp = j + 1 if j < Nx - 1 else j
-                jm = j - 1 if j > 0 else j
+                jp = min(j + 1, Nx - 1)
+                jm = max(j - 1, 0)
                 new_phi[i, j] = 0.25 * (phi[ip, j] + phi[im, j]
                                         + phi[i, jp] + phi[i, jm])
         for i in range(Ny):
@@ -136,11 +140,11 @@ def _phase_np_step_jit(c, cp, phi, ux, uy, grain_theta,
     # spatial derivatives (replicate-edge BC)
     cx = np.empty((Ny, Nx)); cy = np.empty((Ny, Nx))
     for i in range(Ny):
-        ip = i + 1 if i < Ny - 1 else i
-        im = i - 1 if i > 0 else i
+        ip = min(i + 1, Ny - 1)
+        im = max(i - 1, 0)
         for j in range(Nx):
-            jp = j + 1 if j < Nx - 1 else j
-            jm = j - 1 if j > 0 else j
+            jp = min(j + 1, Nx - 1)
+            jm = max(j - 1, 0)
             cx[i, j] = (c[i, jp] - c[i, jm]) / (2.0 * dx)
             cy[i, j] = (c[ip, j] - c[im, j]) / (2.0 * dx)
 
@@ -177,11 +181,11 @@ def _phase_np_step_jit(c, cp, phi, ux, uy, grain_theta,
     # divergence + cross terms (replicate-edge)
     dc = np.empty((Ny, Nx))
     for i in range(Ny):
-        ip = i + 1 if i < Ny - 1 else i
-        im = i - 1 if i > 0 else i
+        ip = min(i + 1, Ny - 1)
+        im = max(i - 1, 0)
         for j in range(Nx):
-            jp = j + 1 if j < Nx - 1 else j
-            jm = j - 1 if j > 0 else j
+            jp = min(j + 1, Nx - 1)
+            jm = max(j - 1, 0)
             grad_iso = ((A2cx[i, jp] - A2cx[i, jm]) / (2 * dx)
                         + (A2cy[ip, j] - A2cy[im, j]) / (2 * dx))
             gx1 = (AApcy[i, jp] - AApcy[i, jm]) / (2 * dx)
@@ -209,11 +213,11 @@ def _phase_np_step_jit(c, cp, phi, ux, uy, grain_theta,
     # Nernst-Planck for cp (diffusion + electromigration + sink + advection)
     new_cp = np.empty((Ny, Nx))
     for i in range(Ny):
-        ip = i + 1 if i < Ny - 1 else i
-        im = i - 1 if i > 0 else i
+        ip = min(i + 1, Ny - 1)
+        im = max(i - 1, 0)
         for j in range(Nx):
-            jp = j + 1 if j < Nx - 1 else j
-            jm = j - 1 if j > 0 else j
+            jp = min(j + 1, Nx - 1)
+            jm = max(j - 1, 0)
             Deff_c = De * c[i, j] + Ds * (1.0 - c[i, j])
             Deff_ip = De * c[ip, j] + Ds * (1.0 - c[ip, j])
             Deff_im = De * c[im, j] + Ds * (1.0 - c[im, j])
